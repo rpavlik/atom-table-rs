@@ -4,13 +4,22 @@
 //
 // Author: Ryan Pavlik <ryan.pavlik@collabora.com>
 
-use std::{collections::HashMap, error::Error, fmt::Debug, hash::Hash};
+use std::{
+    borrow::Borrow,
+    collections::{hash_map, HashMap},
+    fmt::Debug,
+    hash::Hash,
+};
 use typed_index_collections::TiVec;
 
+/// Indicates that your transform function for AtomTable did not return unique outputs,
+/// so the "lookup ID by value" feature of the data structure could not be maintained in the
+/// transformed result.
 #[derive(Debug, thiserror::Error, Clone, Copy)]
 #[error("The transform function output the same value for two unique input values, so an atom table cannot be constructed from the outputs")]
 pub struct NonUniqueTransformOutputError;
 
+/// Wraps a user-provided error type to also allow returning NonUniqueTransformOutputError
 #[derive(Debug, thiserror::Error)]
 pub enum TransformResError<E> {
     #[error("The transform function returned an error: {0}")]
@@ -33,8 +42,8 @@ impl<E> TransformResError<E> {
 /// of bulky values, performing a lookup in both directions.
 ///
 /// T is your value type, and I is your index/ID type.
-#[derive(Debug)]
-pub(crate) struct AtomTable<T, I>
+#[derive(Debug, Clone)]
+pub struct AtomTable<T, I>
 where
     I: From<usize>,
 {
@@ -71,6 +80,7 @@ where
     pub fn get_or_create_id_for_owned_value(&mut self, value: V) -> I
     where
         V: Clone + Hash + Eq,
+        I: Copy,
     {
         if let Some(id) = self.map.get(&value) {
             return *id;
@@ -85,6 +95,7 @@ where
     pub fn get_or_create_id(&mut self, value: &V) -> I
     where
         V: Clone + Hash + Eq,
+        I: Copy,
     {
         if let Some(id) = self.map.get(value) {
             return *id;
@@ -95,10 +106,11 @@ where
     }
 
     /// Look up the provided value and return the existing ID for it, if any.
-    pub fn get_id(&self, value: &V) -> Option<I>
+    pub fn get_id<Q: ?Sized>(&self, value: &Q) -> Option<I>
     where
         I: Copy,
-        V: Hash + Eq,
+        V: Hash + Eq + Borrow<Q>,
+        Q: Hash + Eq,
     {
         self.map.get(value).copied()
     }
@@ -146,9 +158,10 @@ where
     }
 }
 
-impl<V, I: From<usize>> Extend<V> for AtomTable<V, I>
+impl<V, I> Extend<V> for AtomTable<V, I>
 where
-    V: Hash + Eq,
+    V: Hash + Eq + Clone,
+    I: From<usize> + Copy,
 {
     fn extend<T: IntoIterator<Item = V>>(&mut self, iter: T) {
         for val in iter {
@@ -160,9 +173,18 @@ where
 impl<V, I> FromIterator<V> for AtomTable<V, I>
 where
     I: From<usize>,
+    V: Clone + Hash + Eq,
 {
     fn from_iter<T: IntoIterator<Item = V>>(iter: T) -> Self {
-        todo!()
+        let mut map = HashMap::new();
+        let mut vec = TiVec::new();
+        for val in iter {
+            if let hash_map::Entry::Vacant(entry) = map.entry(val.clone()) {
+                let id = vec.push_and_get_key(val);
+                entry.insert(id);
+            }
+        }
+        Self { vec, map }
     }
 }
 
@@ -185,7 +207,7 @@ mod tests {
     }
 
     #[test]
-    fn basics() {
+    fn read_basics() {
         let table: AtomTable<String, Id> = vec!["a", "b", "c"]
             .into_iter()
             .map(str::to_string)
@@ -193,8 +215,59 @@ mod tests {
 
         assert!(table.get_id("a").is_some());
         let a = table.get_id("a").unwrap();
+        assert_eq!(table.get_value(a).unwrap(), "a");
 
-        let result = add(2, 2);
-        assert_eq!(result, 4);
+        assert!(table.get_id("b").is_some());
+        let b = table.get_id("b").unwrap();
+        assert_eq!(table.get_value(b).unwrap(), "b");
+
+        assert_ne!(a, b);
+
+        assert!(table.get_id("c").is_some());
+        let c = table.get_id("c").unwrap();
+        assert_eq!(table.get_value(c).unwrap(), "c");
+
+        assert_ne!(a, c);
+        assert_ne!(b, c);
+
+        assert!(table.get_id("d").is_none());
+
+        // Construct an ID we expect to be bad
+        let bad_id = Id::from(usize::from(c) + 200);
+
+        assert_ne!(a, bad_id);
+        assert_ne!(b, bad_id);
+        assert_ne!(c, bad_id);
+        assert!(table.get_value(bad_id).is_none());
+    }
+
+    #[test]
+    fn mut_basics() {
+        let mut table: AtomTable<String, Id> = vec!["a", "b", "c"]
+            .into_iter()
+            .map(str::to_string)
+            .collect();
+
+        let string_a = "a".to_string();
+        let a = table.get_id(&string_a).unwrap();
+        assert_eq!(table.get_or_create_id(&string_a), a);
+        assert_eq!(table.get_or_create_id_for_owned_value(string_a.clone()), a);
+
+        let string_b = "b".to_string();
+        let b = table.get_id(&string_b).unwrap();
+        assert_eq!(table.get_or_create_id(&string_b), b);
+        assert_eq!(table.get_or_create_id_for_owned_value(string_b.clone()), b);
+
+        let string_c = "c".to_string();
+        let c = table.get_id(&string_c).unwrap();
+        assert_eq!(table.get_or_create_id(&string_c), c);
+        assert_eq!(table.get_or_create_id_for_owned_value(string_c.clone()), c);
+
+        let string_d = "d".to_string();
+        let d = table.get_or_create_id(&string_d);
+        assert_ne!(a, d);
+        assert_ne!(b, d);
+        assert_ne!(c, d);
+        assert!(table.get_id("d").is_some());
     }
 }
