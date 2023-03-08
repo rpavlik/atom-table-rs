@@ -33,7 +33,7 @@
 //! let b = table.get_id("b").unwrap();
 //! let d = table.get_or_create_id_for_owned_value("d".to_string());
 //!
-//! let b_try_again = table.get_or_create_id_for_owned_value("b".to_string());
+//! let b_try_again = table.get_or_create_id("b");
 //! assert_eq!(b, b_try_again);
 //! ```
 //!
@@ -130,13 +130,11 @@ where
         V: Clone + Hash + Eq,
         I: Copy,
     {
+        // not using HashMap::entry to avoid a clone when the value already exists.
         if let Some(id) = self.map.get(&value) {
             return *id;
         }
-        let id = self.vec.push_and_get_key(value.clone());
-        let insert_result = self.map.insert(value, id);
-        assert!(insert_result.is_none());
-        id
+        self.insert_known_unique_value(value)
     }
 
     /// Look up the provided value, and either return the existing ID for it,
@@ -146,19 +144,34 @@ where
     /// - See [`AtomTable::get_or_create_id_for_owned_value`] if you already own the value and
     ///   are willing to transfer ownership: it will save one clone.
     ///
+    /// The generic type usage here is to allow usage of things that can be turned into
+    /// owned values (generally by cloning), and which may be used without cloning to find
+    /// an existing ID.
+    ///
     /// # Panics
     ///
     /// Panics (assert) if an internal invariant is violated, which should not be possible.
-    pub fn get_or_create_id(&mut self, value: &V) -> I
+    pub fn get_or_create_id<Q>(&mut self, value: &Q) -> I
+    where
+        I: Copy,
+        V: Clone + Hash + Eq + Borrow<Q>,
+        Q: ?Sized + Hash + Eq + ToOwned<Owned = V>,
+    {
+        // not using HashMap::entry to avoid a clone when the value already exists.
+        if let Some(id) = self.get_id(value) {
+            return id;
+        }
+        self.insert_known_unique_value(value.to_owned())
+    }
+
+    /// Must only be called if we already know this value is not in the data already!
+    fn insert_known_unique_value(&mut self, value: V) -> I
     where
         V: Clone + Hash + Eq,
         I: Copy,
     {
-        if let Some(id) = self.map.get(value) {
-            return *id;
-        }
         let id = self.vec.push_and_get_key(value.clone());
-        let insert_result = self.map.insert(value.clone(), id);
+        let insert_result = self.map.insert(value, id);
         assert!(insert_result.is_none());
         id
     }
@@ -473,10 +486,13 @@ mod tests {
         assert_eq!(table.get_or_create_id(&string_b), b);
         assert_eq!(table.get_or_create_id_for_owned_value(string_b.clone()), b);
 
-        let string_c = "c".to_string();
-        let c = table.get_id(&string_c).unwrap();
-        assert_eq!(table.get_or_create_id(&string_c), c);
-        assert_eq!(table.get_or_create_id_for_owned_value(string_c.clone()), c);
+        let string_c = "c";
+        let c = table.get_id(string_c).unwrap();
+        assert_eq!(table.get_or_create_id(string_c), c);
+        assert_eq!(
+            table.get_or_create_id_for_owned_value(string_c.to_owned()),
+            c
+        );
 
         let string_d = "d".to_string();
         let d = table.get_or_create_id(&string_d);
