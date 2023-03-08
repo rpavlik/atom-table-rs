@@ -92,7 +92,7 @@ where
     where
         I: Copy,
     {
-        Default::default()
+        Self::default()
     }
 
     /// Iterate over the values.
@@ -119,6 +119,10 @@ where
     /// - See [`AtomTable::get_id`] if you want to only get the ID if one already exists.
     /// - See [`AtomTable::get_or_create_id`] if you do not already own the value or are unwilling
     ///   to transfer ownership - it will do an extra clone for you, as late as possible, if necessary.
+    ///
+    /// # Panics
+    ///
+    /// Panics (assert) if an internal invariant is violated, which should not be possible.
     pub fn get_or_create_id_for_owned_value(&mut self, value: V) -> I
     where
         V: Clone + Hash + Eq,
@@ -139,6 +143,10 @@ where
     /// - See [`AtomTable::get_id`] if you want to only get the ID if one already exists.
     /// - See [`AtomTable::get_or_create_id_for_owned_value`] if you already own the value and
     ///   are willing to transfer ownership: it will save one clone.
+    ///
+    /// # Panics
+    ///
+    /// Panics (assert) if an internal invariant is violated, which should not be possible.
     pub fn get_or_create_id(&mut self, value: &V) -> I
     where
         V: Clone + Hash + Eq,
@@ -157,11 +165,11 @@ where
     ///
     /// The generic type usage here mirrors that used in [`HashMap<K, V>::get`], to allow e.g. `&str` to be
     /// passed here if the value type is [`String`].
-    pub fn get_id<Q: ?Sized>(&self, value: &Q) -> Option<I>
+    pub fn get_id<Q>(&self, value: &Q) -> Option<I>
     where
         I: Copy,
         V: Hash + Eq + Borrow<Q>,
-        Q: Hash + Eq,
+        Q: Hash + Eq + ?Sized,
     {
         self.map.get(value).copied()
     }
@@ -173,8 +181,8 @@ where
 {
     fn default() -> Self {
         Self {
-            vec: Default::default(),
-            map: Default::default(),
+            vec: TiVec::default(),
+            map: HashMap::default(),
         }
     }
 }
@@ -327,10 +335,12 @@ where
     /// Your function `f` **must** return unique outputs when given the unique inputs,
     /// so the returned [`AtomTable`] may still support ID lookup from a value (data structure invariant).
     ///
+    /// Requires (default) feature "transform"
+    ///
+    /// # Errors
+    ///
     /// Returns an [`NonUniqueTransformOutputError`] error if your function does not return
     /// unique outputs for each input.
-    ///
-    /// Requires (default) feature "transform"
     pub fn try_transform<U: Hash + Eq + Clone>(
         &self,
         mut f: impl FnMut(&V) -> U,
@@ -349,13 +359,19 @@ where
     /// with correspondence between the IDs.
     /// (That is, `new_table.get(id)` on the new table will return effectively `old_table.get(id).map(p).ok().flatten()`)
     ///
+    /// Requires (default) feature "transform"
+    ///
+    /// # Errors
+    ///
     /// Returns an error if your transform function returns an error at any point.
     ///
     /// Your error type will be wrapped by [`TransformResError`] so that
     /// [`NonUniqueTransformOutputError`] may also be returned, if your function does not return
     /// unique outputs for each input, which would break the invariant of the data structure.
     ///
-    /// Requires (default) feature "transform"
+    /// # Panics
+    ///
+    /// Panics if an internal invariant is somehow violated, which should not be possible.
     pub fn try_transform_res<U: Hash + Eq + Clone, E>(
         &self,
         mut f: impl FnMut(&V) -> Result<U, E>,
@@ -363,8 +379,8 @@ where
     where
         I: Eq + Debug,
     {
-        let mut vec: TiVec<I, U> = Default::default();
-        let mut map: HashMap<U, I> = Default::default();
+        let mut vec: TiVec<I, U> = TiVec::default();
+        let mut map: HashMap<U, I> = HashMap::default();
         vec.reserve(self.vec.len());
         for (id, val) in self.vec.iter_enumerated() {
             let new_val = f(val).map_err(TransformResError::TransformFunctionError)?;
@@ -375,7 +391,6 @@ where
             if old_id_for_this_val.is_some() {
                 return Err(TransformResError::from(NonUniqueTransformOutputError));
             }
-            assert!(old_id_for_this_val.is_none());
         }
         Ok(AtomTable { vec, map })
     }
