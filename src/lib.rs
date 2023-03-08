@@ -88,6 +88,7 @@ where
     I: From<usize>,
 {
     /// Make a new (empty) table.
+    #[must_use]
     pub fn new() -> Self
     where
         I: Copy,
@@ -106,6 +107,7 @@ where
     }
 
     /// Look up the ID and return the corresponding value, if any.
+    #[must_use]
     pub fn get(&self, id: I) -> Option<&V>
     where
         usize: From<I>,
@@ -165,6 +167,7 @@ where
     ///
     /// The generic type usage here mirrors that used in [`HashMap<K, V>::get`], to allow e.g. `&str` to be
     /// passed here if the value type is [`String`].
+    #[must_use]
     pub fn get_id<Q>(&self, value: &Q) -> Option<I>
     where
         I: Copy,
@@ -303,6 +306,7 @@ impl<E> TransformResError<E> {
     ///
     /// Returns `Some(NonUniqueTransformOutputError)` if this is [`TransformResError::NonUniqueOutput`],
     /// [`None`] otherwise.
+    #[must_use]
     pub const fn as_non_unique_output(&self) -> Option<NonUniqueTransformOutputError> {
         if let Self::NonUniqueOutput(v) = self {
             Some(*v)
@@ -315,6 +319,7 @@ impl<E> TransformResError<E> {
     ///
     /// Returns `Some` if this is [`TransformResError::TransformFunctionError`],
     /// [`None`] otherwise.
+    #[must_use]
     pub const fn as_transform_function_error(&self) -> Option<&E> {
         if let Self::TransformFunctionError(v) = self {
             Some(v)
