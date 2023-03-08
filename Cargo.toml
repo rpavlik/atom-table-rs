@@ -4,7 +4,7 @@
 [package]
 authors = ["Ryan Pavlik <ryan.pavlik@collabora.com>"]
 description = "Assign easy-to-handle typed IDs to large, hard to handle things like strings"
-edition = "2018"
+edition = "2021"
 license = "BSL-1.0"
 name = "atom_table"
 version = "0.1.0"
