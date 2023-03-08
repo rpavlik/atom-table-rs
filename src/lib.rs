@@ -485,4 +485,81 @@ mod tests {
 
         assert_eq!(ids.len(), unique_ids.len());
     }
+
+    #[test]
+    #[cfg(feature = "transform")]
+    fn transform() {
+        let table: AtomTable<String, Id> = vec!["a", "b", "c"]
+            .into_iter()
+            .map(str::to_string)
+            .collect();
+
+        let a = table.get_id("a").unwrap();
+
+        let b = table.get_id("b").unwrap();
+
+        let c = table.get_id("c").unwrap();
+
+        {
+            let uppercase_table = table
+                .try_transform(|s| s.to_uppercase())
+                .expect("This should not have any duplicate values");
+            assert_eq!(uppercase_table.get(a).unwrap(), "A");
+            assert_eq!(uppercase_table.get(b).unwrap(), "B");
+            assert_eq!(uppercase_table.get(c).unwrap(), "C");
+        }
+        {
+            let result = table.try_transform(|s| s == "b");
+            assert!(result.is_err());
+            assert_eq!(result.unwrap_err(), NonUniqueTransformOutputError);
+        }
+    }
+
+    #[test]
+    #[cfg(feature = "transform")]
+    fn transform_res() {
+        #[derive(Debug, PartialEq, Eq, Clone, Copy)]
+        struct DoNotLikeLetterB;
+
+        let table: AtomTable<String, Id> = vec!["a", "b", "c"]
+            .into_iter()
+            .map(str::to_string)
+            .collect();
+
+        let a = table.get_id("a").unwrap();
+        let b = table.get_id("b").unwrap();
+        let c = table.get_id("c").unwrap();
+
+        {
+            // Check simple transformation that should work.
+            let uppercase_table = table
+                .try_transform_res(|s| -> Result<String, ()> { Ok(s.to_uppercase()) })
+                .expect("This should not have any duplicate values or errors");
+            assert_eq!(uppercase_table.get(a).unwrap(), "A");
+            assert_eq!(uppercase_table.get(b).unwrap(), "B");
+            assert_eq!(uppercase_table.get(c).unwrap(), "C");
+        }
+
+        {
+            // Check error result from function
+            let result = table.try_transform_res(|s| {
+                if s == "b" {
+                    Err(DoNotLikeLetterB)
+                } else {
+                    Ok(s.to_uppercase())
+                }
+            });
+            assert!(result.is_err());
+            assert_eq!(
+                *result.unwrap_err().as_transform_function_error().unwrap(),
+                DoNotLikeLetterB
+            );
+        }
+        {
+            // Check non-unique output
+            let result = table.try_transform_res(|s| -> Result<bool, ()> { Ok(s == "b") });
+            assert!(result.is_err());
+            assert!(result.unwrap_err().as_non_unique_output().is_some());
+        }
+    }
 }
