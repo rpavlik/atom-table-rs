@@ -16,6 +16,13 @@ use typed_index_collections::TiVec;
 /// of bulky values, performing a lookup in both directions.
 ///
 /// T is your value type, and I is your index/ID type.
+///
+/// Typically I should be a "newtype" (tuple struct) wrapping usize
+/// and with Copy and From<usize> implemented for it and From<I> implemented for usize.
+/// The derive_more crate may be useful for implementing these traits.
+///
+/// Right now, the values must have an implementation of Clone. This may be loosened
+/// in the future if there is a straightforward and compelling way and reason to do so.
 #[derive(Debug, Clone)]
 pub struct AtomTable<T, I>
 where
