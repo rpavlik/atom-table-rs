@@ -5,7 +5,7 @@ Copyright 2023, Collabora, Ltd.
 SPDX-License-Identifier: CC-BY-4.0
 -->
 
-## Unreleased
+## 1.1.0
 
 ### Major changes
 

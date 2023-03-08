@@ -12,7 +12,7 @@ license = "MIT OR Apache-2.0"
 name = "atom_table"
 readme = "README.md"
 repository = "https://github.com/rpavlik/atom-table-rs"
-version = "1.0.0"
+version = "1.1.0"
 
 [features]
 default = ["transform"]
