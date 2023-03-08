@@ -332,9 +332,11 @@ where
 
 #[cfg(test)]
 mod tests {
+    use std::collections::HashSet;
+
     use super::*;
 
-    #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+    #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
     struct Id(usize);
 
     impl From<usize> for Id {
@@ -410,6 +412,26 @@ mod tests {
         assert_ne!(a, d);
         assert_ne!(b, d);
         assert_ne!(c, d);
-        assert!(table.get_id("d").is_some());
+        assert_eq!(table.get_id("d"), Some(d));
+
+        table.extend(vec![
+            "d".to_string(),
+            "e".to_string(),
+            "f".to_string(),
+            "g".to_string(),
+        ]);
+
+        assert_eq!(table.get_id("d"), Some(d));
+        assert!(table.get_id("e").is_some());
+        assert!(table.get_id("f").is_some());
+        assert!(table.get_id("g").is_some());
+        let e = table.get_id("e").unwrap();
+        let f = table.get_id("f").unwrap();
+        let g = table.get_id("g").unwrap();
+
+        let ids = vec![a, b, c, d, e, f, g];
+        let unique_ids: HashSet<Id> = ids.iter().copied().collect();
+
+        assert_eq!(ids.len(), unique_ids.len());
     }
 }
