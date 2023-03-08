@@ -117,7 +117,7 @@ impl<V, I> AtomTable<V, I>
 where
     I: From<usize>,
 {
-    /// Make a new table
+    /// Make a new (empty) table.
     pub fn new() -> Self
     where
         I: Copy,
@@ -125,12 +125,12 @@ where
         Default::default()
     }
 
-    /// Iterate over the values
+    /// Iterate over the values.
     pub fn iter(&self) -> impl Iterator<Item = &V> {
         self.vec.iter()
     }
 
-    /// Iterate over the (ID, value) pairs
+    /// Iterate over the (ID, value) pairs.
     pub fn iter_enumerated(&self) -> impl Iterator<Item = (I, &V)> {
         self.vec.iter_enumerated()
     }
@@ -145,6 +145,10 @@ where
 
     /// Look up the provided, owned value, and either return the existing ID for it,
     /// or add it to the table and return the newly created ID for it.
+    ///
+    /// - See [`AtomTable::get_id`] if you want to only get the ID if one already exists.
+    /// - See [`AtomTable::get_or_create_id`] if you do not already own the value or are unwilling
+    ///   to transfer ownership - it will do an extra clone for you, as late as possible, if necessary.
     pub fn get_or_create_id_for_owned_value(&mut self, value: V) -> I
     where
         V: Clone + Hash + Eq,
@@ -161,6 +165,10 @@ where
 
     /// Look up the provided value, and either return the existing ID for it,
     /// or add it to the table and return the newly created ID for it.
+    ///
+    /// - See [`AtomTable::get_id`] if you want to only get the ID if one already exists.
+    /// - See [`AtomTable::get_or_create_id_for_owned_value`] if you already own the value and
+    ///   are willing to transfer ownership: it will save one clone.
     pub fn get_or_create_id(&mut self, value: &V) -> I
     where
         V: Clone + Hash + Eq,
@@ -177,7 +185,7 @@ where
 
     /// Look up the provided value and return the existing ID for it, if any.
     ///
-    /// The generic type usage here mirrors that used in HashMap, to allow e.g. `&str` to be
+    /// The generic type usage here mirrors that used in [`HashMap<K, V>::get`], to allow e.g. `&str` to be
     /// passed here if the value type is [`String`].
     pub fn get_id<Q: ?Sized>(&self, value: &Q) -> Option<I>
     where
