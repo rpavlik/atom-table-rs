@@ -486,6 +486,83 @@ mod tests {
         assert_eq!(ids.len(), unique_ids.len());
     }
 
+    fn extend_empty_using_abc_vec(
+        mut table: AtomTable<String, Id>,
+    ) -> (AtomTable<String, Id>, Id, Id, Id) {
+        table.extend(vec!["a".to_string(), "b".to_string(), "c".to_string()]);
+
+        let a = table.get_id("a").unwrap();
+        let b = table.get_id("b").unwrap();
+        let c = table.get_id("c").unwrap();
+
+        assert_eq!(table.get(a).unwrap(), "a");
+        assert_eq!(table.get(b).unwrap(), "b");
+        assert_eq!(table.get(c).unwrap(), "c");
+        assert!(table.get_id("d").is_none());
+
+        (table, a, b, c)
+    }
+
+    #[test]
+    fn start_from_new() {
+        let (_table, _a, _b, _c) = extend_empty_using_abc_vec(AtomTable::new());
+    }
+
+    #[test]
+    fn start_from_default() {
+        let (_table, _a, _b, _c) = extend_empty_using_abc_vec(AtomTable::default());
+    }
+
+    #[test]
+    fn test_iteration() {
+        let (table, a, b, c) = extend_empty_using_abc_vec(AtomTable::default());
+
+        {
+            let values: Vec<&str> = table.iter().map(String::as_str).collect();
+            assert_eq!(values, vec!["a", "b", "c"]);
+        }
+        {
+            let values: Vec<(Id, &str)> = table
+                .iter_enumerated()
+                .map(|(id, s)| (id, s.as_str()))
+                .collect();
+            assert_eq!(values, vec![(a, "a"), (b, "b"), (c, "c")]);
+            assert_eq!(values, vec![(Id(0), "a"), (Id(1), "b"), (Id(2), "c")]);
+        }
+        {
+            let values: Vec<String> = table.into_iter().collect();
+            assert_eq!(values, vec!["a", "b", "c"]);
+        }
+    }
+
+    #[test]
+    fn test_comparison_and_cloning() {
+        let (mut table, a, b, c) = extend_empty_using_abc_vec(AtomTable::default());
+        let cloned_table = table.clone();
+
+        assert_eq!(cloned_table.get(a).unwrap(), "a");
+        assert_eq!(cloned_table.get(b).unwrap(), "b");
+        assert_eq!(cloned_table.get(c).unwrap(), "c");
+        assert!(cloned_table.get_id("d").is_none());
+
+        assert_eq!(table, cloned_table);
+
+        let d = table.get_or_create_id_for_owned_value("d".to_string());
+
+        assert_ne!(table, cloned_table);
+        assert_eq!(table.get_id("d").unwrap(), d);
+        assert!(cloned_table.get_id("d").is_none());
+    }
+
+    #[test]
+    fn test_conversion() {
+        let (table, _a, _b, _c) = extend_empty_using_abc_vec(AtomTable::default());
+
+        let converted_to_vec: Vec<String> = table.into();
+
+        assert_eq!(converted_to_vec, vec!["a", "b", "c"]);
+    }
+
     #[test]
     #[cfg(feature = "transform")]
     fn transform() {
@@ -518,7 +595,8 @@ mod tests {
     #[test]
     #[cfg(feature = "transform")]
     fn transform_res() {
-        #[derive(Debug, PartialEq, Eq, Clone, Copy)]
+        #[derive(Debug, PartialEq, Eq, Clone, Copy, thiserror::Error)]
+        #[error("We do not like the letter B in this collection, to give us a reason to return an error")]
         struct DoNotLikeLetterB;
 
         let table: AtomTable<String, Id> = vec!["a", "b", "c"]
@@ -551,15 +629,49 @@ mod tests {
             });
             assert!(result.is_err());
             assert_eq!(
-                *result.unwrap_err().as_transform_function_error().unwrap(),
+                *result
+                    .as_ref()
+                    .unwrap_err()
+                    .as_transform_function_error()
+                    .unwrap(),
                 DoNotLikeLetterB
             );
+            // check for the function's error text
+            assert!(result
+                .as_ref()
+                .unwrap_err()
+                .to_string()
+                .contains("do not like the letter B"));
+
+            // check for the wrapper text
+            assert!(result
+                .as_ref()
+                .unwrap_err()
+                .to_string()
+                .contains("The transform function returned an error"));
+
+            assert!(result.unwrap_err().as_non_unique_output().is_none());
         }
         {
             // Check non-unique output
             let result = table.try_transform_res(|s| -> Result<bool, ()> { Ok(s == "b") });
             assert!(result.is_err());
-            assert!(result.unwrap_err().as_non_unique_output().is_some());
+            assert!(result
+                .as_ref()
+                .unwrap_err()
+                .as_non_unique_output()
+                .is_some());
+
+            // check for the error text
+            assert!(result
+                .as_ref()
+                .unwrap_err()
+                .as_non_unique_output()
+                .unwrap()
+                .to_string()
+                .contains("The transform function output the same value"));
+
+            assert!(result.unwrap_err().as_transform_function_error().is_none());
         }
     }
 }
