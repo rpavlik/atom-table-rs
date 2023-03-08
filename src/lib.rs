@@ -83,36 +83,6 @@ where
     map: HashMap<T, I>,
 }
 
-impl<T, I> Default for AtomTable<T, I>
-where
-    I: From<usize> + Copy,
-{
-    fn default() -> Self {
-        Self {
-            vec: Default::default(),
-            map: Default::default(),
-        }
-    }
-}
-
-impl<V, I> PartialEq for AtomTable<V, I>
-where
-    I: From<usize>,
-    V: PartialEq,
-{
-    fn eq(&self, other: &Self) -> bool {
-        // do not need to compare the map, it is basically just a cache
-        self.vec == other.vec
-    }
-}
-
-impl<V, I> Eq for AtomTable<V, I>
-where
-    I: From<usize>,
-    V: Eq,
-{
-}
-
 impl<V, I> AtomTable<V, I>
 where
     I: From<usize>,
@@ -197,6 +167,38 @@ where
     }
 }
 
+impl<T, I> Default for AtomTable<T, I>
+where
+    I: From<usize> + Copy,
+{
+    fn default() -> Self {
+        Self {
+            vec: Default::default(),
+            map: Default::default(),
+        }
+    }
+}
+
+/// Equality comparison provided only when associated value type supports equality.
+impl<V, I> PartialEq for AtomTable<V, I>
+where
+    I: From<usize>,
+    V: PartialEq,
+{
+    fn eq(&self, other: &Self) -> bool {
+        // do not need to compare the map, it is basically just a cache
+        self.vec == other.vec
+    }
+}
+
+impl<V, I> Eq for AtomTable<V, I>
+where
+    I: From<usize>,
+    V: Eq,
+{
+}
+
+/// Provide `into_iter()` which iterates only over the values.
 impl<V, I> IntoIterator for AtomTable<V, I>
 where
     I: From<usize>,
@@ -210,6 +212,7 @@ where
     }
 }
 
+/// Allow extending from an iterator over values: duplicate values are silently ignored/discarded.
 impl<V, I> Extend<V> for AtomTable<V, I>
 where
     V: Hash + Eq + Clone,
@@ -222,6 +225,9 @@ where
     }
 }
 
+/// Allow creation from an iterator over values: duplicate values are silently ignored/discarded.
+///
+/// This is what allows us to use [`Iterator::collect`] into an [`AtomTable`].
 impl<V, I> FromIterator<V> for AtomTable<V, I>
 where
     I: From<usize>,
@@ -240,6 +246,7 @@ where
     }
 }
 
+/// Conversion to a normal [`Vec`]
 impl<V, I> From<AtomTable<V, I>> for Vec<V>
 where
     I: From<usize>,
@@ -251,31 +258,58 @@ where
 
 // Support for the "transform" functions/feature follows
 
-/// Indicates that your transform function for AtomTable did not return unique outputs,
+/// Indicates that your transform function for [`AtomTable`] did not return unique outputs,
 /// so the "lookup ID by value" feature of the data structure could not be maintained in the
 /// transformed result.
+///
+/// Used directly by [`AtomTable<V, I>::try_transform`], and may be wrapped into [`TransformResError`]
+/// by [`AtomTable<V, I>::try_transform_res`]
 #[cfg(feature = "transform")]
 #[derive(Debug, thiserror::Error, Clone, Copy)]
 #[error("The transform function output the same value for two unique input values, so an atom table cannot be constructed from the outputs")]
 pub struct NonUniqueTransformOutputError;
 
-/// Wraps a user-provided error type to also allow returning [`NonUniqueTransformOutputError`]
+/// Wraps a user-provided error type to also allow returning [`NonUniqueTransformOutputError`].
+///
+/// `E` is the transform function's error type. That is, if
+/// the transform function provided returns [`Result<U, E>`],
+/// [`AtomTable<V, I>::try_transform_res`] will have an error type of
+/// [`TransformResError<E>`], with an overall return type of
+/// `Result<AtomTable<U, I>, TransformResError<E>>`.
+///
+/// Used by [`AtomTable<V, I>::try_transform_res`]
 #[cfg(feature = "transform")]
 #[derive(Debug, thiserror::Error)]
 pub enum TransformResError<E> {
-    /// Wraps a user-provided error type used by a transform function
+    /// Wraps a user-provided error type used by a transform function.
     #[error("The transform function returned an error: {0}")]
     TransformFunctionError(#[source] E),
-    /// Wraps [`NonUniqueTransformOutputError`]
+    /// Wraps [`NonUniqueTransformOutputError`], returned when your function does not produce unique outputs.
     #[error(transparent)]
     NonUniqueOutput(#[from] NonUniqueTransformOutputError),
 }
 
 #[cfg(feature = "transform")]
 impl<E> TransformResError<E> {
-    fn as_non_unique_output(&self) -> Option<NonUniqueTransformOutputError> {
+    /// Gets the contained [`NonUniqueTransformOutputError`] if applicable.
+    ///
+    /// Returns `Some(NonUniqueTransformOutputError)` if this is [`TransformResError::NonUniqueOutput`],
+    /// [`None`] otherwise.
+    pub fn as_non_unique_output(&self) -> Option<NonUniqueTransformOutputError> {
         if let Self::NonUniqueOutput(v) = self {
             Some(*v)
+        } else {
+            None
+        }
+    }
+
+    /// Gets the contained error returned by the provided function, if applicable.
+    ///
+    /// Returns `Some` if this is [`TransformResError::TransformFunctionError`],
+    /// [`None`] otherwise.
+    pub fn as_transform_function_error(&self) -> Option<&E> {
+        if let Self::TransformFunctionError(v) = self {
+            Some(v)
         } else {
             None
         }
@@ -290,8 +324,11 @@ where
     /// Apply a function to all values to produce a new atom table
     /// with correspondence between the IDs.
     ///
+    /// Your function `f` **must** return unique outputs when given the unique inputs,
+    /// so the returned [`AtomTable`] may still support ID lookup from a value (data structure invariant).
+    ///
     /// Returns an [`NonUniqueTransformOutputError`] error if your function does not return
-    /// unique outputs for each input, which would break the invariant of the data structure.
+    /// unique outputs for each input.
     ///
     /// Requires (default) feature "transform"
     pub fn try_transform<U: Hash + Eq + Clone>(
@@ -311,6 +348,12 @@ where
     /// Apply a function returning [`Result<T, E>`] to all values to produce a new atom table
     /// with correspondence between the IDs.
     /// (That is, `new_table.get(id)` on the new table will return effectively `old_table.get(id).map(p).ok().flatten()`)
+    ///
+    /// Returns an error if your transform function returns an error at any point.
+    ///
+    /// Your error type will be wrapped by [`TransformResError`] so that
+    /// [`NonUniqueTransformOutputError`] may also be returned, if your function does not return
+    /// unique outputs for each input, which would break the invariant of the data structure.
     ///
     /// Requires (default) feature "transform"
     pub fn try_transform_res<U: Hash + Eq + Clone, E>(
