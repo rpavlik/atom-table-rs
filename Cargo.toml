@@ -1,11 +1,16 @@
+# SPDX-FileCopyrightText: 2023, Collabora, Ltd.
+# SPDX-License-Identifier: CC0-1.0
+
 [package]
+authors = ["Ryan Pavlik <ryan.pavlik@collabora.com>"]
+description = "Assign easy-to-handle typed IDs to large, hard to handle things like strings"
+edition = "2018"
+license = "BSL-1.0"
 name = "atom_table"
 version = "0.1.0"
-edition = "2021"
-description = "Assign easy-to-handle typed IDs to large, hard to handle things like strings"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-typed-index-collections = "3.1"
 thiserror = "1.0"
+typed-index-collections = "3.1"
