@@ -27,3 +27,6 @@ derive_more = "0.99.14"
 
 [package.metadata.docs.rs]
 all-features = true
+
+[workspace]
+members = ["xtask"]
