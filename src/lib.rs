@@ -12,32 +12,6 @@ use std::{
 };
 use typed_index_collections::TiVec;
 
-/// Indicates that your transform function for AtomTable did not return unique outputs,
-/// so the "lookup ID by value" feature of the data structure could not be maintained in the
-/// transformed result.
-#[derive(Debug, thiserror::Error, Clone, Copy)]
-#[error("The transform function output the same value for two unique input values, so an atom table cannot be constructed from the outputs")]
-pub struct NonUniqueTransformOutputError;
-
-/// Wraps a user-provided error type to also allow returning NonUniqueTransformOutputError
-#[derive(Debug, thiserror::Error)]
-pub enum TransformResError<E> {
-    #[error("The transform function returned an error: {0}")]
-    TransformFunctionError(#[source] E),
-    #[error(transparent)]
-    NonUniqueOutput(#[from] NonUniqueTransformOutputError),
-}
-
-impl<E> TransformResError<E> {
-    pub fn as_non_unique_output(&self) -> Option<NonUniqueTransformOutputError> {
-        if let Self::NonUniqueOutput(v) = self {
-            Some(*v)
-        } else {
-            None
-        }
-    }
-}
-
 /// A data structure that lets you use strongly typed indices/IDs instead
 /// of bulky values, performing a lookup in both directions.
 ///
@@ -114,9 +88,48 @@ where
     {
         self.map.get(value).copied()
     }
+}
 
+// Support for the "transform" functions/feature follows
+
+/// Indicates that your transform function for AtomTable did not return unique outputs,
+/// so the "lookup ID by value" feature of the data structure could not be maintained in the
+/// transformed result.
+#[cfg(feature = "transform")]
+#[derive(Debug, thiserror::Error, Clone, Copy)]
+#[error("The transform function output the same value for two unique input values, so an atom table cannot be constructed from the outputs")]
+pub struct NonUniqueTransformOutputError;
+
+/// Wraps a user-provided error type to also allow returning NonUniqueTransformOutputError
+#[cfg(feature = "transform")]
+#[derive(Debug, thiserror::Error)]
+pub enum TransformResError<E> {
+    #[error("The transform function returned an error: {0}")]
+    TransformFunctionError(#[source] E),
+    #[error(transparent)]
+    NonUniqueOutput(#[from] NonUniqueTransformOutputError),
+}
+
+#[cfg(feature = "transform")]
+impl<E> TransformResError<E> {
+    pub fn as_non_unique_output(&self) -> Option<NonUniqueTransformOutputError> {
+        if let Self::NonUniqueOutput(v) = self {
+            Some(*v)
+        } else {
+            None
+        }
+    }
+}
+
+#[cfg(feature = "transform")]
+impl<V, I> AtomTable<V, I>
+where
+    I: From<usize>,
+{
     /// Apply a function to all values to produce a new atom table
-    /// with correspondence between the IDs
+    /// with correspondence between the IDs.
+    ///
+    /// Requires (default) feature "transform"
     pub fn try_transform<U: Hash + Eq + Clone>(
         &self,
         mut f: impl FnMut(&V) -> U,
@@ -133,6 +146,8 @@ where
 
     /// Apply a function returning Result<_, _> to all values to produce a new atom table
     /// with correspondence between the IDs.
+    ///
+    /// Requires (default) feature "transform"
     pub fn try_transform_res<U: Hash + Eq + Clone, E>(
         &self,
         mut f: impl FnMut(&V) -> Result<U, E>,
@@ -155,36 +170,6 @@ where
             assert!(old_id_for_this_val.is_none());
         }
         Ok(AtomTable { vec, map })
-    }
-}
-
-impl<V, I> Extend<V> for AtomTable<V, I>
-where
-    V: Hash + Eq + Clone,
-    I: From<usize> + Copy,
-{
-    fn extend<T: IntoIterator<Item = V>>(&mut self, iter: T) {
-        for val in iter {
-            self.get_or_create_id_for_owned_value(val);
-        }
-    }
-}
-
-impl<V, I> FromIterator<V> for AtomTable<V, I>
-where
-    I: From<usize>,
-    V: Clone + Hash + Eq,
-{
-    fn from_iter<T: IntoIterator<Item = V>>(iter: T) -> Self {
-        let mut map = HashMap::new();
-        let mut vec = TiVec::new();
-        for val in iter {
-            if let hash_map::Entry::Vacant(entry) = map.entry(val.clone()) {
-                let id = vec.push_and_get_key(val);
-                entry.insert(id);
-            }
-        }
-        Self { vec, map }
     }
 }
 

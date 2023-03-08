@@ -9,8 +9,10 @@ license = "BSL-1.0"
 name = "atom_table"
 version = "0.1.0"
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+[features]
+default = ["transform"]
+transform = ["dep:thiserror"]
 
 [dependencies]
-thiserror = "1.0"
+thiserror = {version = "1.0", optional = true}
 typed-index-collections = "3.1"

@@ -1,5 +1,6 @@
 # SPDX-License-Identifier: CC0-1.0
 # SPDX-FileCopyrightText: 2022, GitHub
+# SPDX-FileCopyrightText: 2023, Collabora, Ltd.
 
 name: Tests
 
@@ -23,3 +24,5 @@ jobs:
       run: cargo build --verbose
     - name: Run tests
       run: cargo test --verbose
+    - name: Run tests in minimal configuration
+      run: cargo test --verbose --no-default-features
