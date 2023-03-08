@@ -5,6 +5,7 @@
 authors = ["Ryan Pavlik <ryan.pavlik@collabora.com>"]
 categories = ["data-structures"]
 description = "Assign easy-to-handle typed IDs to large, hard to handle things like strings"
+documentation = "https://docs.rs/atom_table"
 edition = "2021"
 keywords = ["collection", "index", "vec"]
 license = "BSL-1.0"
