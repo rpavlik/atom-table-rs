@@ -1,6 +1,6 @@
 // Copyright 2022-2023, Collabora, Ltd.
 //
-// SPDX-License-Identifier: BSL-1.0
+// SPDX-License-Identifier: MIT or Apache-2.0
 //
 // Author: Ryan Pavlik <ryan.pavlik@collabora.com>
 
