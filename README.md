@@ -4,6 +4,9 @@
 Copyright 2023, Collabora, Ltd.
 SPDX-License-Identifier: CC-BY-4.0
 -->
+[![Crates.io](https://img.shields.io/crates/v/atom_table)](https://crates.io/crates/atom_table)
+[![docs.rs](https://img.shields.io/docsrs/atom_table)](https://docs.rs/atom_table/latest)
+[![REUSE status](https://api.reuse.software/badge/github.com/rpavlik/atom-table-rs)](https://api.reuse.software/info/github.com/rpavlik/atom-table-rs)
 
 A simple data structure, allowing you to refer to "hard to handle" values by
 "easy to handle" IDs, with lookups in both directions. I imagine such a crate
