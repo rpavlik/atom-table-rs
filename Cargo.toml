@@ -11,7 +11,7 @@ license = "BSL-1.0"
 name = "atom_table"
 readme = "README.md"
 repository = "https://github.com/rpavlik/atom-table-rs"
-version = "0.1.0"
+version = "1.0.0"
 
 [features]
 default = ["transform"]
