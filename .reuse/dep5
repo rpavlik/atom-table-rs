@@ -1,0 +1,4 @@
+Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
+Upstream-Name: atom_table
+Upstream-Contact: Ryan Pavlik <ryan.pavlik@collabora.com>
+Source: https://github.com/rpavlik/atom-table-rs
