@@ -3,10 +3,14 @@
 
 [package]
 authors = ["Ryan Pavlik <ryan.pavlik@collabora.com>"]
+categories = ["data-structures"]
 description = "Assign easy-to-handle typed IDs to large, hard to handle things like strings"
 edition = "2021"
+keywords = ["collection", "index", "vec"]
 license = "BSL-1.0"
 name = "atom_table"
+readme = "README.md"
+repository = "https://github.com/rpavlik/atom-table-rs"
 version = "0.1.0"
 
 [features]
@@ -16,3 +20,6 @@ transform = ["dep:thiserror"]
 [dependencies]
 thiserror = {version = "1.0", optional = true}
 typed-index-collections = "3.1"
+
+[package.metadata.docs.rs]
+all-features = true
