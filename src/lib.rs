@@ -303,7 +303,7 @@ impl<E> TransformResError<E> {
     ///
     /// Returns `Some(NonUniqueTransformOutputError)` if this is [`TransformResError::NonUniqueOutput`],
     /// [`None`] otherwise.
-    pub fn as_non_unique_output(&self) -> Option<NonUniqueTransformOutputError> {
+    pub const fn as_non_unique_output(&self) -> Option<NonUniqueTransformOutputError> {
         if let Self::NonUniqueOutput(v) = self {
             Some(*v)
         } else {
@@ -315,7 +315,7 @@ impl<E> TransformResError<E> {
     ///
     /// Returns `Some` if this is [`TransformResError::TransformFunctionError`],
     /// [`None`] otherwise.
-    pub fn as_transform_function_error(&self) -> Option<&E> {
+    pub const fn as_transform_function_error(&self) -> Option<&E> {
         if let Self::TransformFunctionError(v) = self {
             Some(v)
         } else {
