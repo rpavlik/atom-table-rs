@@ -48,6 +48,16 @@ impl<V, I> AtomTable<V, I>
 where
     I: From<usize>,
 {
+    /// Iterate over the values
+    pub fn iter(&self) -> impl Iterator<Item = &V> {
+        self.vec.iter()
+    }
+
+    /// Iterate over the ID, value pairs
+    pub fn iter_enumerated(&self) -> impl Iterator<Item = (I, &V)> {
+        self.vec.iter_enumerated()
+    }
+
     /// Look up the ID and return the corresponding value, if any.
     pub fn get(&self, id: I) -> Option<&V>
     where
@@ -94,6 +104,58 @@ where
         Q: Hash + Eq,
     {
         self.map.get(value).copied()
+    }
+}
+
+impl<V, I> IntoIterator for AtomTable<V, I>
+where
+    I: From<usize>,
+{
+    type Item = V;
+
+    type IntoIter = <TiVec<I, V> as IntoIterator>::IntoIter;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.vec.into_iter()
+    }
+}
+
+impl<V, I> Extend<V> for AtomTable<V, I>
+where
+    V: Hash + Eq + Clone,
+    I: From<usize> + Copy,
+{
+    fn extend<T: IntoIterator<Item = V>>(&mut self, iter: T) {
+        for val in iter {
+            self.get_or_create_id_for_owned_value(val);
+        }
+    }
+}
+
+impl<V, I> FromIterator<V> for AtomTable<V, I>
+where
+    I: From<usize>,
+    V: Clone + Hash + Eq,
+{
+    fn from_iter<T: IntoIterator<Item = V>>(iter: T) -> Self {
+        let mut map = HashMap::new();
+        let mut vec = TiVec::new();
+        for val in iter {
+            if let hash_map::Entry::Vacant(entry) = map.entry(val.clone()) {
+                let id = vec.push_and_get_key(val);
+                entry.insert(id);
+            }
+        }
+        Self { vec, map }
+    }
+}
+
+impl<V, I> From<AtomTable<V, I>> for Vec<V>
+where
+    I: From<usize>,
+{
+    fn from(value: AtomTable<V, I>) -> Self {
+        value.vec.into()
     }
 }
 
