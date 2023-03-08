@@ -12,6 +12,29 @@ A simple data structure, allowing you to refer to "hard to handle" values by
 "easy to handle" IDs, with lookups in both directions. I imagine such a crate
 already exists but using a name I do not know, so here is mine anyway.
 
+## Development and contribution
+
+I try to keep the test coverage high because this is a simple data structure and
+it should be possible to easily exercise it all.
+
+To generate a local test coverage report as HTML:
+
+```sh
+cargo xtask coverage --dev
+```
+
+To generate the coverage in lcov format for (presumably) your editor to use:
+
+```sh
+cargo xtask coverage
+```
+
+To run most of the CI checks that will take place:
+
+```sh
+cargo xtask ci
+```
+
 ## License
 
 Licensed under either of the
