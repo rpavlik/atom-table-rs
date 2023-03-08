@@ -4,6 +4,54 @@
 //
 // Author: Ryan Pavlik <ryan.pavlik@collabora.com>
 
+//! This crate provides a generic "Atom Table" style data structure.
+//! "Atom Table" conventionally refers to a table of strings where each has an ID,
+//! and you can look up the ID by the string, or the string by the ID.
+//! The [`AtomTable<V, I>`][`AtomTable`] struct in this crate is more generic,
+//! allowing nearly any type as the "value" type, and using custom type-safe ID types
+//! you provide as the ID.
+//!
+//! # Examples
+//!
+//! Example usage might look like:
+//!
+//! ```rust
+//! use derive_more::{From, Into};
+//! use atom_table::AtomTable;
+//!
+//! /// The ID type for the table
+//! /// Using `derive_more` to save having to manually implement traits
+//! #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, From, Into)]
+//! struct Id(usize);
+//!
+//! let mut table: AtomTable<String, Id> = vec!["a", "b", "c"]
+//!     .into_iter()
+//!     .map(str::to_string)
+//!     .collect();
+//!
+//! let a = table.get_id("a").unwrap();
+//! let b = table.get_id("b").unwrap();
+//! let d = table.get_or_create_id_for_owned_value("d".to_string());
+//!
+//! let b_try_again = table.get_or_create_id_for_owned_value("b".to_string());
+//! assert_eq!(b, b_try_again);
+//! ```
+//!
+#![warn(
+    clippy::all,
+    future_incompatible,
+    missing_copy_implementations,
+    missing_debug_implementations,
+    missing_docs,
+    nonstandard_style,
+    rust_2018_idioms,
+    rust_2021_compatibility,
+    single_use_lifetimes,
+    trivial_casts,
+    unreachable_pub,
+    unused
+)]
+
 use std::{
     borrow::Borrow,
     collections::{hash_map, HashMap},
@@ -15,14 +63,17 @@ use typed_index_collections::TiVec;
 /// A data structure that lets you use strongly typed indices/IDs instead
 /// of bulky values, performing a lookup in both directions.
 ///
-/// T is your value type, and I is your index/ID type.
+/// `T` is your value type, and `I` is your index/ID type.
 ///
 /// Typically I should be a "newtype" (tuple struct) wrapping usize
-/// and with Copy and From<usize> implemented for it and From<I> implemented for usize.
-/// The derive_more crate may be useful for implementing these traits.
+/// and with [`Copy`] and [`From<usize>`] implemented for it and [`From<I>`] implemented for usize.
+/// The `derive_more` crate may be useful for implementing these traits.
 ///
-/// Right now, the values must have an implementation of Clone. This may be loosened
+/// Right now, the values must have an implementation of [`Clone`]. This may be loosened
 /// in the future if there is a straightforward and compelling way and reason to do so.
+///
+/// Values cannot be modified once inserted, because remaining the same is essential to providing
+/// the invariant (and, each value is stored twice within the structure at this time)
 #[derive(Debug, Clone)]
 pub struct AtomTable<T, I>
 where
@@ -44,16 +95,42 @@ where
     }
 }
 
+impl<V, I> PartialEq for AtomTable<V, I>
+where
+    I: From<usize>,
+    V: PartialEq,
+{
+    fn eq(&self, other: &Self) -> bool {
+        // do not need to compare the map, it is basically just a cache
+        self.vec == other.vec
+    }
+}
+
+impl<V, I> Eq for AtomTable<V, I>
+where
+    I: From<usize>,
+    V: Eq,
+{
+}
+
 impl<V, I> AtomTable<V, I>
 where
     I: From<usize>,
 {
+    /// Make a new table
+    pub fn new() -> Self
+    where
+        I: Copy,
+    {
+        Default::default()
+    }
+
     /// Iterate over the values
     pub fn iter(&self) -> impl Iterator<Item = &V> {
         self.vec.iter()
     }
 
-    /// Iterate over the ID, value pairs
+    /// Iterate over the (ID, value) pairs
     pub fn iter_enumerated(&self) -> impl Iterator<Item = (I, &V)> {
         self.vec.iter_enumerated()
     }
@@ -77,7 +154,8 @@ where
             return *id;
         }
         let id = self.vec.push_and_get_key(value.clone());
-        self.map.insert(value, id);
+        let insert_result = self.map.insert(value, id);
+        assert!(insert_result.is_none());
         id
     }
 
@@ -92,11 +170,15 @@ where
             return *id;
         }
         let id = self.vec.push_and_get_key(value.clone());
-        self.map.insert(value.clone(), id);
+        let insert_result = self.map.insert(value.clone(), id);
+        assert!(insert_result.is_none());
         id
     }
 
     /// Look up the provided value and return the existing ID for it, if any.
+    ///
+    /// The generic type usage here mirrors that used in HashMap, to allow e.g. `&str` to be
+    /// passed here if the value type is [`String`].
     pub fn get_id<Q: ?Sized>(&self, value: &Q) -> Option<I>
     where
         I: Copy,
@@ -127,7 +209,7 @@ where
 {
     fn extend<T: IntoIterator<Item = V>>(&mut self, iter: T) {
         for val in iter {
-            self.get_or_create_id_for_owned_value(val);
+            let _ = self.get_or_create_id_for_owned_value(val);
         }
     }
 }
@@ -143,7 +225,7 @@ where
         for val in iter {
             if let hash_map::Entry::Vacant(entry) = map.entry(val.clone()) {
                 let id = vec.push_and_get_key(val);
-                entry.insert(id);
+                let _ = entry.insert(id);
             }
         }
         Self { vec, map }
@@ -169,19 +251,21 @@ where
 #[error("The transform function output the same value for two unique input values, so an atom table cannot be constructed from the outputs")]
 pub struct NonUniqueTransformOutputError;
 
-/// Wraps a user-provided error type to also allow returning NonUniqueTransformOutputError
+/// Wraps a user-provided error type to also allow returning [`NonUniqueTransformOutputError`]
 #[cfg(feature = "transform")]
 #[derive(Debug, thiserror::Error)]
 pub enum TransformResError<E> {
+    /// Wraps a user-provided error type used by a transform function
     #[error("The transform function returned an error: {0}")]
     TransformFunctionError(#[source] E),
+    /// Wraps [`NonUniqueTransformOutputError`]
     #[error(transparent)]
     NonUniqueOutput(#[from] NonUniqueTransformOutputError),
 }
 
 #[cfg(feature = "transform")]
 impl<E> TransformResError<E> {
-    pub fn as_non_unique_output(&self) -> Option<NonUniqueTransformOutputError> {
+    fn as_non_unique_output(&self) -> Option<NonUniqueTransformOutputError> {
         if let Self::NonUniqueOutput(v) = self {
             Some(*v)
         } else {
@@ -198,6 +282,9 @@ where
     /// Apply a function to all values to produce a new atom table
     /// with correspondence between the IDs.
     ///
+    /// Returns an [`NonUniqueTransformOutputError`] error if your function does not return
+    /// unique outputs for each input, which would break the invariant of the data structure.
+    ///
     /// Requires (default) feature "transform"
     pub fn try_transform<U: Hash + Eq + Clone>(
         &self,
@@ -213,8 +300,9 @@ where
             })
     }
 
-    /// Apply a function returning Result<_, _> to all values to produce a new atom table
+    /// Apply a function returning [`Result<T, E>`] to all values to produce a new atom table
     /// with correspondence between the IDs.
+    /// (That is, `new_table.get(id)` on the new table will return effectively `old_table.get(id).map(p).ok().flatten()`)
     ///
     /// Requires (default) feature "transform"
     pub fn try_transform_res<U: Hash + Eq + Clone, E>(
