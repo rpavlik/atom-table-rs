@@ -265,7 +265,7 @@ where
 /// Used directly by [`AtomTable<V, I>::try_transform`], and may be wrapped into [`TransformResError`]
 /// by [`AtomTable<V, I>::try_transform_res`]
 #[cfg(feature = "transform")]
-#[derive(Debug, thiserror::Error, Clone, Copy)]
+#[derive(Debug, thiserror::Error, Clone, Copy, PartialEq, Eq)]
 #[error("The transform function output the same value for two unique input values, so an atom table cannot be constructed from the outputs")]
 pub struct NonUniqueTransformOutputError;
 
