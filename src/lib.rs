@@ -42,7 +42,7 @@ where
     I: From<usize>,
 {
     /// Look up the ID and return the corresponding value, if any.
-    pub fn get_value(&self, id: I) -> Option<&V>
+    pub fn get(&self, id: I) -> Option<&V>
     where
         usize: From<I>,
     {
@@ -200,17 +200,17 @@ mod tests {
 
         assert!(table.get_id("a").is_some());
         let a = table.get_id("a").unwrap();
-        assert_eq!(table.get_value(a).unwrap(), "a");
+        assert_eq!(table.get(a).unwrap(), "a");
 
         assert!(table.get_id("b").is_some());
         let b = table.get_id("b").unwrap();
-        assert_eq!(table.get_value(b).unwrap(), "b");
+        assert_eq!(table.get(b).unwrap(), "b");
 
         assert_ne!(a, b);
 
         assert!(table.get_id("c").is_some());
         let c = table.get_id("c").unwrap();
-        assert_eq!(table.get_value(c).unwrap(), "c");
+        assert_eq!(table.get(c).unwrap(), "c");
 
         assert_ne!(a, c);
         assert_ne!(b, c);
@@ -223,7 +223,7 @@ mod tests {
         assert_ne!(a, bad_id);
         assert_ne!(b, bad_id);
         assert_ne!(c, bad_id);
-        assert!(table.get_value(bad_id).is_none());
+        assert!(table.get(bad_id).is_none());
     }
 
     #[test]
