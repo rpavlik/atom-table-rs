@@ -11,6 +11,10 @@ SPDX-License-Identifier: CC-BY-4.0
 - Add reference to the docs.rs docs in Cargo.toml
 - Add tests to increase line coverage to 100%
 - Add more derived traits to `NonUniqueTransformOutputError` for the sake of the tests.
+- Remove leftover redundant assert.
+- Add some `#[must_use]`.
+- Improve docs.
+- Add "xtask" setup for easy running of test code coverage.
 
 ## 1.0.0
 
