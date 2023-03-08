@@ -44,8 +44,16 @@ jobs:
       - name: Install grcov
         run: cargo install grcov
 
-      - name: Run clippy, fmt, coverage... using xtask
+      - name: Run clippy, fmt, ... using xtask
         run: cargo xtask ci
+
+      - name: Run test coverage
+        run: cargo xtask coverage
+
+      - name: Upload coverage data
+        uses: codecov/codecov-action@v3
+        with:
+          files: coverage/*.lcov
 
   reuse-compliance:
     runs-on: ubuntu-latest
