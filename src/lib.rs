@@ -359,6 +359,10 @@ where
     ///
     /// Returns an [`NonUniqueTransformOutputError`] error if your function does not return
     /// unique outputs for each input.
+    ///
+    /// # Panics
+    ///
+    /// In case of internal logic error. Should not be possible.
     pub fn try_transform<U: Hash + Eq + Clone>(
         &self,
         mut f: impl FnMut(&V) -> U,
