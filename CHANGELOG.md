@@ -5,6 +5,10 @@ Copyright 2023, Collabora, Ltd.
 SPDX-License-Identifier: CC-BY-4.0
 -->
 
+## unreleased
+
+- Update to use derive_more 1.0 in tests: MSRV for tests is therefore 1.75.
+
 ## 1.1.0
 
 ### Major changes
