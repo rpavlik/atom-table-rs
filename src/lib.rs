@@ -252,17 +252,18 @@ where
 /// Allow creation from an iterator over values: duplicate values are silently ignored/discarded.
 ///
 /// This is what allows us to use [`Iterator::collect`] into an [`AtomTable`].
-impl<V, I> FromIterator<V> for AtomTable<V, I>
+impl<Q, V, I> FromIterator<Q> for AtomTable<V, I>
 where
     I: From<usize>,
-    V: Clone + Hash + Eq,
+    V: Hash + Eq + Borrow<Q>,
+    Q: ToOwned<Owned = V>,
 {
-    fn from_iter<T: IntoIterator<Item = V>>(iter: T) -> Self {
+    fn from_iter<T: IntoIterator<Item = Q>>(iter: T) -> Self {
         let mut map = HashMap::new();
-        let mut vec = TiVec::new();
+        let mut vec: TiVec<I, V> = TiVec::new();
         for val in iter {
-            if let hash_map::Entry::Vacant(entry) = map.entry(val.clone()) {
-                let id = vec.push_and_get_key(val);
+            if let hash_map::Entry::Vacant(entry) = map.entry(val.to_owned()) {
+                let id = vec.push_and_get_key(val.to_owned());
                 let _ = entry.insert(id);
             }
         }
@@ -444,6 +445,12 @@ mod tests {
             .into_iter()
             .map(str::to_string)
             .collect();
+
+        {
+            let table_without_explicit_to_string: AtomTable<String, Id> =
+                vec!["a", "b", "c"].into_iter().collect();
+            assert_eq!(table, table_without_explicit_to_string);
+        }
 
         assert!(table.get_id("a").is_some());
         let a = table.get_id("a").unwrap();
