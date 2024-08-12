@@ -520,7 +520,7 @@ mod tests {
         let f = table.get_id("f").unwrap();
         let g = table.get_id("g").unwrap();
 
-        let ids = vec![a, b, c, d, e, f, g];
+        let ids = [a, b, c, d, e, f, g];
         let unique_ids: HashSet<Id> = ids.iter().copied().collect();
 
         assert_eq!(ids.len(), unique_ids.len());
