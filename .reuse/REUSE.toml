@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2023-2024, Collabora, Ltd.
+# SPDX-License-Identifier: CC0-1.0
 version = 1
 SPDX-PackageName = "atom_table"
 SPDX-PackageSupplier = "Rylie Pavlik <rylie.pavlik@collabora.com>"
