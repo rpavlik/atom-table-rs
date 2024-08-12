@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: CC0-1.0
 
 [package]
-authors = ["Ryan Pavlik <ryan.pavlik@collabora.com>"]
+authors = ["Rylie Pavlik <rylie.pavlik@collabora.com>"]
 categories = ["data-structures"]
 description = "Assign easy-to-handle typed IDs to large, hard to handle things like strings"
 documentation = "https://docs.rs/atom_table"

@@ -1,8 +1,8 @@
-// Copyright 2022-2023, Collabora, Ltd.
+// Copyright 2022-2024, Collabora, Ltd.
 //
 // SPDX-License-Identifier: MIT or Apache-2.0
 //
-// Author: Ryan Pavlik <ryan.pavlik@collabora.com>
+// Author: Rylie Pavlik <rylie.pavlik@collabora.com>
 
 //! This crate provides a generic "Atom Table" style data structure.
 //! "Atom Table" conventionally refers to a table of strings where each has an ID,
