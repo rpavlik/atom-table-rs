@@ -1,0 +1,5 @@
+version = 1
+SPDX-PackageName = "atom_table"
+SPDX-PackageSupplier = "Rylie Pavlik <rylie.pavlik@collabora.com>"
+SPDX-PackageDownloadLocation = "https://github.com/rpavlik/atom-table-rs"
+annotations = []
