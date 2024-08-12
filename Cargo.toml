@@ -19,7 +19,7 @@ default = ["transform"]
 transform = ["dep:thiserror"]
 
 [dependencies]
-thiserror = {version = "1.0", optional = true}
+thiserror = { version = "1.0", optional = true }
 typed-index-collections = "3.1"
 
 [dev-dependencies]
