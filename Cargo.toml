@@ -24,7 +24,7 @@ typed-index-collections = "3.1"
 
 [dev-dependencies]
 # keeps our tests concise
-derive_more = { version = "1.0.0", features = ["from", "into"] }
+derive_more = { version = "2.0.1", features = ["from", "into"] }
 
 [package.metadata.docs.rs]
 all-features = true
